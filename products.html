@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>제품 관리</title>
+    <style>
+      :root { --ink:#1f2933; --muted:#69727d; --paper:#fffdf9; --bg:#f4f1eb; --line:#e2ded5; --accent:#d45b35; --accent-soft:#f7dfd5; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; padding:32px; color:var(--ink); background:linear-gradient(135deg,#f4f1eb,#e9eee9); font-family:'Noto Sans KR','Malgun Gothic',sans-serif; }
+      .container { width:min(100%,1100px); margin:0 auto; }
+      .topbar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:28px; }
+      h1 { margin:0; font-size:clamp(1.8rem,4vw,2.6rem); letter-spacing:-.05em; }
+      .eyebrow { margin:0 0 6px; color:var(--accent); font-size:.76rem; font-weight:700; letter-spacing:.12em; }
+      .actions { display:flex; gap:10px; }
+      .btn { border:1px solid var(--line); border-radius:8px; padding:10px 14px; background:var(--paper); color:var(--ink); cursor:pointer; font:inherit; font-size:.84rem; font-weight:600; line-height:1.2; white-space:nowrap; }
+      .btn.primary { border-color:var(--accent); background:var(--accent); color:#fff; font-weight:700; }
+      .layout { display:grid; grid-template-columns:320px 1fr; gap:14px; }
+      .panel { padding:22px; border:1px solid var(--line); border-radius:10px; background:var(--paper); }
+      h2 { margin:0 0 18px; font-size:1.1rem; }
+      .field { display:grid; gap:7px; margin-bottom:14px; }
+      label { color:var(--muted); font-size:.82rem; }
+      input, textarea { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--ink); font:inherit; }
+      textarea { min-height:86px; resize:vertical; }
+      .status { min-height:20px; margin-top:12px; color:var(--accent); font-size:.84rem; }
+      table { width:100%; border-collapse:collapse; }
+      th, td { padding:13px 10px; text-align:left; border-bottom:1px solid var(--line); }
+      th { color:var(--muted); font-size:.78rem; font-weight:600; }
+      .category { display:inline-block; padding:4px 8px; border-radius:999px; background:var(--accent-soft); color:#a94124; font-size:.75rem; }
+      .empty { padding:26px 10px; color:var(--muted); text-align:center; }
+      @media (max-width:760px) { body { padding:20px; } .topbar { align-items:flex-start; flex-direction:column; } .layout { grid-template-columns:1fr; } .actions { width:100%; } .actions .btn { flex:1; } table { display:block; overflow-x:auto; white-space:nowrap; } }
+    </style>
+    <link rel="stylesheet" href="theme.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="topbar">
+        <div><p class="eyebrow">PRODUCT CATALOG</p><h1>제품 관리</h1></div>
+        <div class="actions"><button class="btn" id="downloadProductsBtn">Google Sheets 다운로드</button><button class="btn" id="uploadProductsBtn">Google Sheets 업로드</button><input id="productsFile" type="file" accept=".csv,text/csv" hidden /><button class="btn" id="backBtn">관리자 홈</button><button class="btn" id="logoutBtn">로그아웃</button></div>
+      </header>
+      <div class="layout">
+        <section class="panel">
+          <h2>제품 등록</h2>
+          <form id="productForm">
+            <div class="field"><label for="category">품목</label><input id="category" required placeholder="예: 오디오 믹서, 카메라" /></div>
+            <div class="field"><label for="name">사양</label><input id="name" required placeholder="예: 16채널 디지털 믹서" /></div>
+            <div class="field"><label for="unitPrice">판매 단가</label><input id="unitPrice" type="number" min="0" required placeholder="0" /></div>
+            <div class="field"><label for="description">제품 메모</label><textarea id="description" placeholder="추가 설명이나 설치 조건을 입력하세요."></textarea></div>
+            <button class="btn primary" type="submit">제품 등록</button>
+            <div class="status" id="status" aria-live="polite"></div>
+          </form>
+        </section>
+        <section class="panel">
+          <h2>등록된 제품 <span id="count" style="color:var(--muted);font-size:.85rem;"></span></h2>
+          <table><thead><tr><th>품목</th><th>사양</th><th>판매 단가</th></tr></thead><tbody id="productBody"></tbody></table>
+        </section>
+      </div>
+    </main>
+    <script>
+      const API_BASE_URL = window.location.origin;
+      const USER_KEY = 'demo-login-user';
+      const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+      if (!user) window.location.href = 'index.html';
+      if (user && user.email !== 'ainsonicav@gmail.com' && user.role !== 'admin') { alert('관리자만 접근할 수 있습니다.'); window.location.href = 'index.html'; }
+      const productBody = document.getElementById('productBody');
+      const status = document.getElementById('status');
+      const downloadProductsBtn = document.getElementById('downloadProductsBtn');
+      const uploadProductsBtn = document.getElementById('uploadProductsBtn');
+      const productsFile = document.getElementById('productsFile');
+      const formatPrice = (value) => `${Number(value || 0).toLocaleString('ko-KR')}원`;
+      async function loadProducts() {
+        const response = await fetch(`${API_BASE_URL}/api/products`);
+        const data = await response.json();
+        const products = data.products || [];
+        window.products = products;
+        document.getElementById('count').textContent = `${products.length}개`;
+        productBody.innerHTML = products.map((product) => `<tr><td><span class="category">${product.category || '-'}</span></td><td><strong>${product.name}</strong><br><small style="color:var(--muted)">${product.description || ''}</small></td><td>${formatPrice(product.unit_price)}</td></tr>`).join('') || '<tr><td class="empty" colspan="3">등록된 제품이 없습니다.</td></tr>';
+      }
+
+      function csvCell(value) {
+        return `"${String(value ?? '').replace(/"/g, '""')}"`;
+      }
+
+      function downloadCsv(filename, headers, rows) {
+        const csv = [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+
+      function parseCsv(text) {
+        return text.trim().split(/\r?\n/).map((line) => {
+          const values = [];
+          line.replace(/("(?:[^"]|"")*"|[^,]*)(?:,|$)/g, (_, value) => {
+            values.push(value.startsWith('"') ? value.slice(1, -1).replace(/""/g, '"') : value);
+            return '';
+          });
+          return values;
+        });
+      }
+
+      downloadProductsBtn.addEventListener('click', () => {
+        const rows = (window.products || []).map((item) => [item.id, item.category, item.name, item.unit_price, item.description || '']);
+        downloadCsv('제품_목록_google_sheets.csv', ['id', '품목', '사양', '판매 단가', '제품 메모'], rows);
+      });
+      uploadProductsBtn.addEventListener('click', () => productsFile.click());
+      productsFile.addEventListener('change', async () => {
+        const file = productsFile.files[0];
+        if (!file) return;
+        const rows = parseCsv(await file.text()).slice(1).filter((row) => row.length >= 4 && row[1] && row[2]);
+        try {
+          for (const row of rows) {
+            const payload = { category: row[1], name: row[2], unit_price: Number(row[3]), description: row[4] || '' };
+            const id = Number(row[0]);
+            const response = await fetch(`${API_BASE_URL}/api/products${id ? `/${id}` : ''}`, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error('제품 데이터 반영 실패');
+          }
+          await loadProducts();
+          status.textContent = '제품 파일을 반영했습니다.';
+        } catch (error) { status.textContent = '제품 파일 반영에 실패했습니다.'; }
+        productsFile.value = '';
+      });
+      document.getElementById('productForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = { name: document.getElementById('name').value.trim(), category: document.getElementById('category').value.trim(), unit_price: Number(document.getElementById('unitPrice').value), description: document.getElementById('description').value.trim() };
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/products`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || '제품 등록에 실패했습니다.');
+          status.textContent = data.message;
+          event.target.reset();
+          await loadProducts();
+        } catch (error) { status.textContent = error.message; }
+      });
+      document.getElementById('backBtn').addEventListener('click', () => { window.location.href = 'admin.html'; });
+      document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.removeItem(USER_KEY); window.location.href = 'index.html'; });
+      loadProducts().catch(() => { productBody.innerHTML = '<tr><td class="empty" colspan="4">서버에 연결할 수 없습니다.</td></tr>'; });
+    </script>
+  </body>
+</html>

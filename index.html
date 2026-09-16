@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>견적 관리 로그인</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="theme.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="login-card">
+        <div class="brand-wrap">
+          <div class="brand-mark">L</div>
+          <div>
+            <p class="eyebrow">QUOTATION DESK</p>
+            <h1>관리자 로그인</h1>
+          </div>
+        </div>
+
+        <form class="login-form" id="loginForm" novalidate>
+          <label class="input-group">
+            <span>관리자 ID 또는 이메일</span>
+            <input type="text" id="email" name="email" placeholder="admin 또는 이메일" autocomplete="username" required />
+          </label>
+
+          <label class="input-group">
+            <span>비밀번호</span>
+            <div class="password-field">
+              <input type="password" id="password" name="password" placeholder="비밀번호를 입력하세요" autocomplete="current-password" required />
+              <button type="button" class="password-toggle" id="passwordToggle" aria-label="비밀번호 보기" aria-pressed="false">보기</button>
+            </div>
+          </label>
+
+          <div class="form-options">
+            <label class="remember">
+              <input type="checkbox" />
+              <span>로그인 유지</span>
+            </label>
+            <span>내부 업무용</span>
+          </div>
+
+          <div id="statusMessage" class="status-message" aria-live="polite"></div>
+
+          <button type="submit" class="primary-btn">로그인</button>
+        </form>
+
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

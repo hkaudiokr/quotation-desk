@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>견적서 작성</title>
+    <style>
+      :root {
+        --bg: #f4f1eb;
+        --panel: #fffdf9;
+        --card: #fffdf9;
+        --text: #24313d;
+        --muted: #52606d;
+        --primary: #b5472b;
+        --success: #26735b;
+        --danger: #b94a3a;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f4f1eb, #e9eee9);
+        color: var(--text);
+        font-family: 'Segoe UI', 'Noto Sans KR', sans-serif;
+        padding: 30px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 3rem);
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 12px;
+      }
+
+      .summary-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
+      .summary-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 48px;
+        padding: 8px 14px;
+        border: 1px solid #d9dfe4;
+        border-radius: 8px;
+        background: #fffdf9;
+      }
+
+      .summary-label { color: var(--muted); font-size: .78rem; }
+      .summary-value { color: var(--text); font-size: 1.1rem; font-weight: 700; }
+
+      .btn {
+        border: 1px solid #c9d1d8;
+        background: #ffffff;
+        color: var(--text);
+        padding: 10px 16px;
+        border-radius: 12px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.84rem;
+        font-weight: 600;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .primary {
+        background: var(--primary);
+        border: 1px solid var(--primary);
+        color: #ffffff;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 0.72fr 1.58fr;
+        gap: 14px;
+      }
+
+      .panel {
+        background: var(--card);
+        border: 1px solid #d9dfe4;
+        border-radius: 18px;
+        padding: 22px;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .customer-registration {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(148, 163, 184, 0.12);
+      }
+
+      .customer-registration h3 {
+        margin: 0 0 14px;
+      }
+
+      .field.full {
+        grid-column: 1 / -1;
+      }
+
+      label {
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      input, select, textarea {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid #b9c4cd;
+        background: #ffffff;
+        color: var(--text);
+      }
+
+      textarea {
+        min-height: 88px;
+        resize: vertical;
+      }
+
+      .product-row {
+        display: grid;
+        grid-template-columns: 1.1fr 1.9fr 0.8fr 1fr 1fr auto;
+        gap: 10px;
+        align-items: end;
+        margin-bottom: 12px;
+      }
+
+      .product-row > .btn {
+        align-self: end;
+        height: 44px;
+      }
+
+      .product-row.compact-row label {
+        display: none;
+      }
+
+      .amount-box {
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid rgba(148, 163, 184, 0.12);
+      }
+
+      .total-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+        font-size: 1.2rem;
+        font-weight: 700;
+      }
+
+      .status-box {
+        min-height: 20px;
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        font-size: 0.86rem;
+        display: none;
+      }
+
+      .status-box.error { display:block; background:#fff1ef; border:1px solid #e6aaa1; color:#8f2f25; }
+      .status-box.success { display:block; background:#edf8f2; border:1px solid #a9d5bc; color:#1d6248; }
+
+      @media (max-width: 900px) {
+        .layout, .form-grid, .product-row, .summary-strip {
+          grid-template-columns: 1fr;
+        }
+
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+    <link rel="stylesheet" href="theme.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <h1>견적서 작성</h1>
+        <div class="header-actions">
+          <button class="btn" id="backBtn">관리자 홈</button>
+          <button class="btn" id="logoutBtn">로그아웃</button>
+        </div>
+      </div>
+
+      <div class="summary-strip" aria-label="업무 현황">
+        <div class="summary-item"><span class="summary-label">등록 고객사</span><strong class="summary-value" id="customerCount">-</strong></div>
+        <div class="summary-item"><span class="summary-label">등록 제품</span><strong class="summary-value" id="productCount">-</strong></div>
+        <div class="summary-item"><span class="summary-label">이번 달 견적</span><strong class="summary-value" id="quotationCount">-</strong></div>
+      </div>
+
+      <div class="layout">
+        <div class="panel">
+          <div class="form-grid">
+            <div class="field full">
+              <label for="quotationSubject">건명</label>
+              <input type="text" id="quotationSubject" placeholder="예: 음향·영상장비 설계 및 설치" />
+            </div>
+
+            <div class="field">
+              <label for="companySelect">고객명 (회사명)</label>
+              <select id="companySelect"></select>
+            </div>
+
+            <div class="field">
+              <label for="contactSelect">담당자</label>
+              <select id="contactSelect"></select>
+            </div>
+
+            <div class="field">
+              <label for="selectedContactPhone">담당자 휴대폰</label>
+              <input type="tel" id="selectedContactPhone" readonly inputmode="numeric" />
+            </div>
+
+            <div class="field">
+              <label for="selectedContactEmail">담당자 이메일</label>
+              <input type="email" id="selectedContactEmail" readonly />
+            </div>
+
+            <div class="field">
+              <label for="issueDate">발행일</label>
+              <input type="date" id="issueDate" />
+            </div>
+
+            <div class="field">
+              <label for="dueDate">납기일</label>
+              <input type="date" id="dueDate" />
+            </div>
+
+            <div class="field full">
+              <label for="quotationNote">비고</label>
+              <textarea id="quotationNote" placeholder="견적 비고를 입력하세요."></textarea>
+            </div>
+
+          </div>
+
+          <div class="customer-registration">
+            <h3>새 고객 등록</h3>
+            <div class="form-grid">
+              <div class="field">
+                <label for="newCompanyName">회사명</label>
+                <input type="text" id="newCompanyName" placeholder="회사명을 입력하세요" />
+              </div>
+
+              <div class="field">
+                <label for="newContactName">담당자</label>
+                <input type="text" id="newContactName" placeholder="담당자명을 입력하세요" />
+              </div>
+
+              <div class="field">
+                <label for="newContactPhone">담당자 휴대폰</label>
+                <input type="tel" id="newContactPhone" placeholder="010-0000-0000" inputmode="numeric" />
+              </div>
+
+              <div class="field">
+                <label for="newContactEmail">담당자 이메일</label>
+                <input type="email" id="newContactEmail" placeholder="contact@example.com" />
+              </div>
+
+              <div class="field full">
+                <button type="button" class="btn" id="registerCustomerBtn">고객 등록</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>견적 항목</h3>
+          <div id="itemsWrap"></div>
+
+          <div style="margin-top:16px;">
+            <button type="button" class="btn primary" id="addItemBtn">항목 추가</button>
+          </div>
+
+          <div class="customer-registration">
+            <h3>새 제품 등록</h3>
+            <div class="form-grid">
+              <div class="field">
+                <label for="newProductCategory">품목</label>
+                <input type="text" id="newProductCategory" placeholder="예: 오디오 믹서" />
+              </div>
+
+              <div class="field">
+                <label for="newProductName">사양</label>
+                <input type="text" id="newProductName" placeholder="예: 16채널 디지털 믹서" />
+              </div>
+
+              <div class="field">
+                <label for="newProductPrice">단가</label>
+                <input type="number" id="newProductPrice" min="0" placeholder="0" />
+              </div>
+
+              <div class="field full">
+                <button type="button" class="btn" id="registerProductBtn">제품 등록</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="amount-box">
+            <div class="total-row">
+              <span>총액</span>
+              <span id="totalAmount">0원</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 18px;">
+            <button type="button" class="btn primary" id="submitQuoteBtn">견적서 저장</button>
+            <button type="button" class="btn" id="previewQuoteBtn">작성한 견적서 미리 보기</button>
+          </div>
+
+          <div id="quoteStatus" class="status-box"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE_URL = window.location.origin;
+      const USER_KEY = 'demo-login-user';
+      const companySelect = document.getElementById('companySelect');
+      const contactSelect = document.getElementById('contactSelect');
+      const selectedContactPhone = document.getElementById('selectedContactPhone');
+      const selectedContactEmail = document.getElementById('selectedContactEmail');
+      const itemsWrap = document.getElementById('itemsWrap');
+      const totalAmountEl = document.getElementById('totalAmount');
+      const quoteStatus = document.getElementById('quoteStatus');
+      const issueDateEl = document.getElementById('issueDate');
+      const dueDateEl = document.getElementById('dueDate');
+      const quotationNoteEl = document.getElementById('quotationNote');
+      const quotationSubjectEl = document.getElementById('quotationSubject');
+      const newCompanyName = document.getElementById('newCompanyName');
+      const newContactName = document.getElementById('newContactName');
+      const newContactPhone = document.getElementById('newContactPhone');
+      const newContactEmail = document.getElementById('newContactEmail');
+      const newProductCategory = document.getElementById('newProductCategory');
+      const newProductName = document.getElementById('newProductName');
+      const newProductPrice = document.getElementById('newProductPrice');
+      let customers = [];
+      let selectedCustomerId = '';
+
+      const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+      if (!user) {
+        window.location.href = 'index.html';
+      }
+
+      if (user && user.email !== 'ainsonicav@gmail.com' && user.role !== 'admin') {
+        alert('관리자만 접근할 수 있습니다.');
+        window.location.href = 'index.html';
+      }
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem(USER_KEY);
+        window.location.href = 'index.html';
+      });
+
+      document.getElementById('backBtn').addEventListener('click', () => {
+        window.location.href = 'admin.html';
+      });
+
+      function formatPrice(value) {
+        return Number(value || 0).toLocaleString('ko-KR') + '원';
+      }
+
+      function formatPhone(value) {
+        const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+        if (digits.length < 4) return digits;
+        if (digits.length < 8) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+        return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+      }
+
+      newContactPhone.addEventListener('input', () => {
+        newContactPhone.value = formatPhone(newContactPhone.value);
+      });
+
+      function setStatus(message, type) {
+        quoteStatus.textContent = message;
+        quoteStatus.className = `status-box ${type}`;
+      }
+
+      function buildItemRow(item = {}, showLabels = true) {
+        const row = document.createElement('div');
+        row.className = `product-row${showLabels ? '' : ' compact-row'}`;
+
+        row.innerHTML = `
+          <div class="field">
+            <label>품목</label>
+            <select class="category-select">
+              <option value="">품목 선택</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>사양</label>
+            <select class="spec-select">
+              <option value="">사양 선택</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>수량</label>
+            <input class="quantity-input" type="number" min="1" value="${item.quantity || 1}" />
+          </div>
+          <div class="field">
+            <label>단가</label>
+            <input class="unit-price-input" type="number" min="0" value="${item.unit_price || 0}" />
+          </div>
+          <div class="field">
+            <label>금액</label>
+            <input class="amount-input" type="text" value="${formatPrice(item.amount || 0)}" readonly />
+          </div>
+          <button class="btn" type="button">삭제</button>
+        `;
+
+        const categorySelect = row.querySelector('.category-select');
+        const specSelect = row.querySelector('.spec-select');
+        const quantityInput = row.querySelector('.quantity-input');
+        const unitPriceInput = row.querySelector('.unit-price-input');
+        const amountInput = row.querySelector('.amount-input');
+        const removeBtn = row.querySelector('button');
+
+        const categories = [...new Set(window.products.map((product) => product.category || '기타'))];
+        categorySelect.innerHTML += categories.map((category) => `<option value="${category}">${category}</option>`).join('');
+
+        function updateSpecs(selectedProductId = item.product_id) {
+          const products = window.products.filter((product) => (product.category || '기타') === categorySelect.value);
+          specSelect.innerHTML = '<option value="">사양 선택</option>' + products.map((product) => `
+            <option value="${product.id}" data-name="${product.name}" data-price="${product.unit_price}">${product.name} (${formatPrice(product.unit_price)})</option>
+          `).join('');
+          if (selectedProductId) {
+            specSelect.value = String(selectedProductId);
+          } else if (products.length === 1) {
+            specSelect.value = String(products[0].id);
+            unitPriceInput.value = products[0].unit_price;
+          }
+        }
+
+        const initialProduct = window.products.find((product) => String(product.id) === String(item.product_id));
+        if (initialProduct) categorySelect.value = initialProduct.category || '기타';
+        updateSpecs();
+
+        function updateAmount() {
+          const selected = specSelect.options[specSelect.selectedIndex];
+          const unitPrice = Number(unitPriceInput.value || selected?.dataset.price || 0);
+          const quantity = Number(quantityInput.value || 0);
+          const amount = unitPrice * quantity;
+          amountInput.value = formatPrice(amount);
+          recalcTotal();
+        }
+
+        categorySelect.addEventListener('change', () => {
+          updateSpecs();
+          const selected = specSelect.options[specSelect.selectedIndex];
+          if (selected?.dataset.price) {
+            unitPriceInput.value = selected.dataset.price;
+          }
+          updateAmount();
+        });
+
+        specSelect.addEventListener('change', () => {
+          const selected = specSelect.options[specSelect.selectedIndex];
+          if (selected && selected.dataset.price) {
+            unitPriceInput.value = selected.dataset.price;
+          }
+          updateAmount();
+        });
+
+        quantityInput.addEventListener('input', updateAmount);
+        unitPriceInput.addEventListener('input', updateAmount);
+        removeBtn.addEventListener('click', () => {
+          row.remove();
+          recalcTotal();
+        });
+
+        updateAmount();
+        return row;
+      }
+
+      function recalcTotal() {
+        const rows = [...document.querySelectorAll('.product-row')];
+        let total = 0;
+
+        rows.forEach((row) => {
+          const qty = Number(row.querySelector('.quantity-input').value || 0);
+          const price = Number(row.querySelector('.unit-price-input').value || 0);
+          total += qty * price;
+        });
+
+        totalAmountEl.textContent = formatPrice(total);
+      }
+
+      async function loadCustomers() {
+        const response = await fetch(`${API_BASE_URL}/api/customers`);
+        const data = await response.json();
+        customers = data.customers || [];
+        document.getElementById('customerCount').textContent = customers.length;
+
+        companySelect.innerHTML = '<option value="">회사명 선택</option>' +
+          customers.map((customer) => `
+            <option value="${customer.id}">${customer.company_name || customer.company || '-'} </option>
+          `).join('');
+
+        contactSelect.innerHTML = '<option value="">담당자 선택</option>' +
+          customers.map((customer) => `
+            <option value="${customer.id}">${customer.contact_name || customer.name}</option>
+          `).join('');
+
+        if (customers.length) {
+          setSelectedCustomer(customers[0].id);
+        }
+      }
+
+      function setSelectedCustomer(customerId) {
+        const customer = customers.find((item) => String(item.id) === String(customerId));
+        selectedCustomerId = customer ? String(customer.id) : '';
+        companySelect.value = selectedCustomerId;
+        contactSelect.value = selectedCustomerId;
+        selectedContactPhone.value = formatPhone(customer?.contact_phone || customer?.phone || '');
+        selectedContactEmail.value = customer?.contact_email || customer?.email || '';
+      }
+
+      companySelect.addEventListener('change', () => {
+        setSelectedCustomer(companySelect.value);
+      });
+
+      contactSelect.addEventListener('change', () => {
+        setSelectedCustomer(contactSelect.value);
+      });
+
+      document.getElementById('registerCustomerBtn').addEventListener('click', async () => {
+        const companyName = newCompanyName.value.trim();
+        const contactName = newContactName.value.trim();
+
+        if (!companyName || !contactName) {
+          setStatus('회사명과 담당자명을 입력해주세요.', 'error');
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/customers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              company_name: companyName,
+              contact_name: contactName,
+              contact_phone: newContactPhone.value.trim(),
+              contact_email: newContactEmail.value.trim(),
+            }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || '고객 등록에 실패했습니다.');
+
+          await loadCustomers();
+          const registeredCustomer = customers.find((customer) =>
+            customer.company_name === companyName && customer.contact_name === contactName
+          );
+          if (registeredCustomer) setSelectedCustomer(registeredCustomer.id);
+          newCompanyName.value = '';
+          newContactName.value = '';
+          newContactPhone.value = '';
+          newContactEmail.value = '';
+          setStatus(data.message, 'success');
+        } catch (error) {
+          setStatus(error.message, 'error');
+        }
+      });
+
+      async function loadProducts() {
+        const response = await fetch(`${API_BASE_URL}/api/products`);
+        const data = await response.json();
+        window.products = data.products || [];
+        document.getElementById('productCount').textContent = window.products.length;
+
+        if (!itemsWrap.children.length) {
+          itemsWrap.appendChild(buildItemRow({}, true));
+        }
+      }
+
+      function refreshProductRows() {
+        const savedRows = [...document.querySelectorAll('.product-row')].map((row) => ({
+          productId: row.querySelector('.spec-select').value,
+          quantity: row.querySelector('.quantity-input').value,
+          unitPrice: row.querySelector('.unit-price-input').value,
+        }));
+        itemsWrap.innerHTML = '';
+        savedRows.forEach((item, index) => itemsWrap.appendChild(buildItemRow({
+          product_id: item.productId,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+        }, index === 0)));
+      }
+
+      document.getElementById('registerProductBtn').addEventListener('click', async () => {
+        const category = newProductCategory.value.trim();
+        const name = newProductName.value.trim();
+        const unitPrice = Number(newProductPrice.value || 0);
+
+        if (!category || !name || unitPrice <= 0) {
+          setStatus('품목, 사양, 단가를 입력해주세요.', 'error');
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/products`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              category,
+              name,
+              unit_price: unitPrice,
+            }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || '제품 등록에 실패했습니다.');
+
+          await loadProducts();
+          refreshProductRows();
+          newProductCategory.value = '';
+          newProductName.value = '';
+          newProductPrice.value = '';
+          setStatus(data.message, 'success');
+        } catch (error) {
+          setStatus(error.message, 'error');
+        }
+      });
+
+      document.getElementById('addItemBtn').addEventListener('click', () => {
+        itemsWrap.appendChild(buildItemRow({}, false));
+      });
+
+      document.getElementById('submitQuoteBtn').addEventListener('click', async () => {
+        const customerId = selectedCustomerId;
+        const selectedCustomer = customers.find((customer) => String(customer.id) === String(customerId));
+        const customerName = selectedCustomer?.company_name || selectedCustomer?.company || '';
+        const rows = [...document.querySelectorAll('.product-row')];
+
+        if (!customerId) {
+          setStatus('고객을 선택해주세요.', 'error');
+          return;
+        }
+
+        if (!rows.length) {
+          setStatus('견적 항목을 추가해주세요.', 'error');
+          return;
+        }
+
+        const items = rows.map((row) => {
+          const select = row.querySelector('.spec-select');
+          const quantity = Number(row.querySelector('.quantity-input').value || 0);
+          const unitPrice = Number(row.querySelector('.unit-price-input').value || 0);
+          const productName = select.selectedOptions[0]?.dataset.name || '';
+          const productId = select.value;
+
+          if (!productId || !productName || quantity <= 0 || unitPrice <= 0) {
+            throw new Error('품목·사양 선택과 수량/단가를 올바르게 입력해주세요.');
+          }
+
+          return {
+            product_id: productId,
+            product_name: productName,
+            quantity,
+            unit_price: unitPrice,
+            amount: quantity * unitPrice,
+          };
+        });
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/quotations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customer_id: Number(customerId),
+              customer_name: customerName,
+              subject: quotationSubjectEl.value.trim(),
+              issue_date: issueDateEl.value,
+              due_date: dueDateEl.value,
+              note: quotationNoteEl.value,
+              items,
+            })
+          });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || '견적서 저장에 실패했습니다.');
+
+          setStatus(`${data.message} (견적서 번호: ${data.quotation_id})`, 'success');
+          setTimeout(() => {
+            window.location.href = 'admin.html';
+          }, 800);
+        } catch (error) {
+          setStatus(error.message, 'error');
+        }
+      });
+
+      document.getElementById('previewQuoteBtn').addEventListener('click', async () => {
+        const selectedCustomer = customers.find((customer) => String(customer.id) === String(selectedCustomerId));
+        const rows = [...document.querySelectorAll('.product-row')];
+        const items = rows.map((row) => {
+          const specSelect = row.querySelector('.spec-select');
+          const selectedProduct = window.products.find((product) => String(product.id) === String(specSelect.value));
+          const quantity = Number(row.querySelector('.quantity-input').value || 0);
+          const unitPrice = Number(row.querySelector('.unit-price-input').value || 0);
+          return {
+            product_category: selectedProduct?.category || '',
+            product_name: specSelect.selectedOptions[0]?.dataset.name || '',
+            quantity,
+            unit_price: unitPrice,
+            amount: quantity * unitPrice,
+          };
+        });
+
+        if (!selectedCustomerId || !items.some((item) => item.product_name && item.unit_price > 0)) {
+          setStatus('고객과 견적 항목을 먼저 입력해주세요.', 'error');
+          return;
+        }
+
+        const validItems = items.filter((item) => item.product_name && item.unit_price > 0);
+        const draftQuotation = {
+          id: '작성 중',
+          subject: quotationSubjectEl.value.trim(),
+          customer_name: selectedCustomer?.company_name || selectedCustomer?.company || '',
+          contact_name: selectedCustomer?.contact_name || selectedCustomer?.name || '',
+          contact_phone: selectedCustomer?.contact_phone || selectedCustomer?.phone || '',
+          contact_email: selectedCustomer?.contact_email || selectedCustomer?.email || '',
+          issue_date: issueDateEl.value,
+          note: quotationNoteEl.value,
+          total_amount: validItems.reduce((total, item) => total + item.amount, 0),
+          items: validItems,
+        };
+        localStorage.setItem('quotation-preview-draft', JSON.stringify(draftQuotation));
+        window.location.href = 'quotation_preview.html?draft=1';
+      });
+
+      issueDateEl.value = new Date().toISOString().slice(0, 10);
+      async function loadQuotationCount() {
+        const response = await fetch(`${API_BASE_URL}/api/quotations`);
+        const data = await response.json();
+        document.getElementById('quotationCount').textContent = (data.quotations || []).length;
+      }
+
+      function restoreDraft() {
+        const draft = JSON.parse(localStorage.getItem('quotation-preview-draft') || 'null');
+        if (!draft) return;
+
+        quotationSubjectEl.value = draft.subject || '';
+        issueDateEl.value = draft.issue_date || issueDateEl.value;
+        quotationNoteEl.value = draft.note || '';
+
+        const customer = customers.find((item) => (item.company_name || item.company) === draft.customer_name);
+        if (customer) setSelectedCustomer(customer.id);
+
+        const validDraftItems = (draft.items || []).filter((item) => item.product_name && Number(item.unit_price) > 0);
+        if (validDraftItems.length) {
+          itemsWrap.innerHTML = '';
+          validDraftItems.forEach((item, index) => {
+            const product = window.products.find((candidate) => candidate.name === item.product_name);
+            itemsWrap.appendChild(buildItemRow({
+              product_id: product?.id,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+            }, index === 0));
+          });
+        }
+      }
+
+      Promise.all([loadCustomers(), loadProducts(), loadQuotationCount()]).then(restoreDraft);
+    </script>
+  </body>
+</html>

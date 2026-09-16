@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>견적 관리</title>
+    <style>
+      :root {
+        --bg: #f4f1eb;
+        --panel: #fffdf9;
+        --card: #fffdf9;
+        --text: #1f2933;
+        --muted: #69727d;
+        --primary: #d45b35;
+        --primary-dark: #a94124;
+        --line: #e5ded4;
+        --success: #26735b;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f4f1eb 0%, #e9eee9 100%);
+        color: var(--text);
+        font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+        padding: 32px;
+      }
+
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 34px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.8rem, 4vw, 2.7rem);
+        letter-spacing: -0.05em;
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        background: #f7dfd5;
+        border: 1px solid #edbbaa;
+        color: var(--primary-dark);
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+      }
+
+      .logout-btn {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        padding: 10px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.84rem;
+        font-weight: 600;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .content {
+        display: grid;
+        grid-template-columns: 1.35fr 0.65fr;
+        gap: 14px;
+      }
+
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 24px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th, td {
+        text-align: left;
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      th {
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 0.8rem;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 0.75rem;
+        font-weight: 700;
+      }
+
+      .active {
+        background: rgba(34, 197, 94, 0.12);
+        color: var(--success);
+      }
+
+      .pending {
+        background: rgba(234, 179, 8, 0.12);
+        color: #facc15;
+      }
+
+      .list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .mini-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .panel-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      h2, h3 {
+        margin: 0;
+      }
+
+      .panel-heading h2 {
+        font-size: 1.1rem;
+      }
+
+      .link-btn {
+        color: var(--primary-dark);
+        text-decoration: none;
+        font-size: 0.86rem;
+        font-weight: 700;
+      }
+
+      .preview-btn {
+        display: inline-block;
+        padding: 6px 10px;
+        border: 1px solid #edbbaa;
+        border-radius: 7px;
+        color: var(--primary-dark);
+        background: #f7dfd5;
+        text-decoration: none;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .quick-actions {
+        display: grid;
+        gap: 10px;
+      }
+
+      .quick-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--text);
+        text-decoration: none;
+        background: #fcfaf6;
+      }
+
+      .quick-action strong {
+        color: var(--primary);
+      }
+
+      .empty {
+        color: var(--muted);
+        padding: 20px 10px;
+        text-align: center;
+      }
+
+      @media (max-width: 860px) {
+        .content {
+          grid-template-columns: 1fr;
+        }
+
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+    <link rel="stylesheet" href="theme.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <div>
+          <p class="label">INTERNAL SALES DESK</p>
+          <h1>견적 관리</h1>
+        </div>
+        <div class="header-actions">
+          <div class="badge" id="adminBadge">관리자 전용</div>
+          <button class="logout-btn" id="quotationBtn">견적서 작성</button>
+          <button class="logout-btn" id="logoutBtn">로그아웃</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>견적서 발행 현황</h2>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>발행일</th>
+                <th>고객사</th>
+                <th>담당자</th>
+                <th>견적 금액</th>
+                <th>미리 보기</th>
+              </tr>
+            </thead>
+            <tbody id="quotationTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <div class="panel-heading"><h2>업무 바로가기</h2></div>
+          <div class="quick-actions">
+            <a class="quick-action" href="users.html"><span>고객사·담당자 관리</span><strong>→</strong></a>
+            <a class="quick-action" href="products.html"><span>제품 관리</span><strong>→</strong></a>
+            <a class="quick-action" href="admin_info.html"><span>관리자 정보</span><strong>→</strong></a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const USER_KEY = 'demo-login-user';
+      const adminBadge = document.getElementById('adminBadge');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const quotationBtn = document.getElementById('quotationBtn');
+      const quotationTableBody = document.getElementById('quotationTableBody');
+      const API_BASE_URL = window.location.origin;
+
+      const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+      if (!user) {
+        window.location.href = 'index.html';
+      }
+
+      if (user && (user.email === 'ainsonicav@gmail.com' || user.role === 'admin')) {
+        adminBadge.textContent = '관리자 홈';
+      } else {
+        alert('관리자만 접근할 수 있습니다.');
+        window.location.href = 'index.html';
+      }
+
+      quotationBtn.addEventListener('click', () => {
+        window.location.href = 'quotation.html';
+      });
+
+      logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem(USER_KEY);
+        window.location.href = 'index.html';
+      });
+
+      async function loadDashboard() {
+        const [customersResponse, productsResponse, quotationsResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/customers`),
+          fetch(`${API_BASE_URL}/api/products`),
+          fetch(`${API_BASE_URL}/api/quotations`),
+        ]);
+        const customers = (await customersResponse.json()).customers || [];
+        const products = (await productsResponse.json()).products || [];
+        const quotations = (await quotationsResponse.json()).quotations || [];
+
+        quotationTableBody.innerHTML = quotations.slice(0, 5).map((quotation) => `
+          <tr>
+            <td>${quotation.issue_date || '-'}</td>
+            <td>${quotation.customer_name || '-'}</td>
+            <td>${quotation.contact_name || '-'}</td>
+            <td>${Number(quotation.total_amount || 0).toLocaleString('ko-KR')}원</td>
+            <td><a class="preview-btn" href="quotation_preview.html?id=${quotation.id}">미리 보기</a></td>
+          </tr>
+        `).join('') || '<tr><td class="empty" colspan="5">발행된 견적서가 없습니다.</td></tr>';
+      }
+
+      loadDashboard().catch(() => {
+        quotationTableBody.innerHTML = '<tr><td class="empty" colspan="5">서버에 연결할 수 없습니다.</td></tr>';
+      });
+    </script>
+  </body>
+</html>

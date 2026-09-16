@@ -1,0 +1,64 @@
+/* Shared control language across the service. */
+:root {
+  --control-height: 40px;
+  --control-radius: 7px;
+  --control-padding: 0 14px;
+  --control-border: #b9c4cd;
+  --control-text: #24313d;
+  --control-primary: #b5472b;
+  --control-primary-hover: #8f3522;
+}
+
+button.btn,
+a.btn,
+button.logout-btn,
+button.primary-btn {
+  min-height: var(--control-height);
+  padding: var(--control-padding);
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+button.btn,
+a.btn,
+button.logout-btn {
+  background: #ffffff;
+  color: var(--control-text);
+}
+
+button.btn:hover,
+a.btn:hover,
+button.logout-btn:hover {
+  border-color: #8f9da9;
+  background: #f6f8fa;
+}
+
+button.btn.primary,
+button.primary-btn {
+  border-color: var(--control-primary);
+  background: var(--control-primary);
+  color: #ffffff;
+}
+
+button.btn.primary:hover,
+button.primary-btn:hover:not(:disabled) {
+  border-color: var(--control-primary-hover);
+  background: var(--control-primary-hover);
+  transform: translateY(-1px);
+}
+
+button.btn:focus-visible,
+a.btn:focus-visible,
+button.logout-btn:focus-visible,
+button.primary-btn:focus-visible {
+  outline: 3px solid rgba(181, 71, 43, 0.24);
+  outline-offset: 2px;
+}

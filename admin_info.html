@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>관리자 정보</title>
+    <style>
+      :root { --ink:#1f2933; --muted:#69727d; --paper:#fffdf9; --bg:#f4f1eb; --line:#e2ded5; --accent:#d45b35; --soft:#f7dfd5; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; padding:32px; color:var(--ink); background:linear-gradient(135deg,#f4f1eb,#e9eee9); font-family:'Noto Sans KR','Malgun Gothic',sans-serif; }
+      .container { width:min(100%,1000px); margin:0 auto; }
+      .topbar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:28px; }
+      .eyebrow { margin:0 0 6px; color:var(--accent); font-size:.76rem; font-weight:700; letter-spacing:.12em; }
+      h1 { margin:0; font-size:clamp(1.8rem,4vw,2.6rem); letter-spacing:-.05em; }
+      .actions { display:flex; gap:10px; }
+      .btn { border:1px solid var(--line); border-radius:8px; padding:10px 14px; background:var(--paper); color:var(--ink); cursor:pointer; font:inherit; }
+      .btn.primary { border-color:var(--accent); background:var(--accent); color:#fff; font-weight:700; }
+      .layout { display:grid; grid-template-columns:320px 1fr; gap:14px; }
+      .panel { padding:22px; border:1px solid var(--line); border-radius:10px; background:var(--paper); }
+      h2 { margin:0 0 18px; font-size:1.1rem; }
+      .limit { margin:-8px 0 18px; color:var(--muted); font-size:.84rem; }
+      .field { display:grid; gap:7px; margin-bottom:14px; }
+      label { color:var(--muted); font-size:.82rem; }
+      input { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--ink); font:inherit; }
+      .status { min-height:20px; margin-top:12px; color:var(--accent); font-size:.84rem; }
+      table { width:100%; border-collapse:collapse; }
+      th, td { padding:13px 10px; text-align:left; border-bottom:1px solid var(--line); }
+      th { color:var(--muted); font-size:.78rem; font-weight:600; }
+      .empty { padding:26px 10px; color:var(--muted); text-align:center; }
+      @media (max-width:760px) { body { padding:20px; } .topbar { align-items:flex-start; flex-direction:column; } .layout { grid-template-columns:1fr; } .actions { width:100%; } .actions .btn { flex:1; } table { display:block; overflow-x:auto; white-space:nowrap; } }
+    </style>
+    <link rel="stylesheet" href="theme.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="topbar">
+        <div><p class="eyebrow">ACCESS CONTROL</p><h1>관리자 정보</h1></div>
+        <div class="actions"><button class="btn" id="backBtn">관리자 홈</button><button class="btn" id="logoutBtn">로그아웃</button></div>
+      </header>
+      <div class="layout">
+        <section class="panel">
+          <h2 id="formTitle">관리자 추가</h2>
+          <p class="limit" id="adminLimit">관리자 0/5명</p>
+          <form id="adminForm">
+            <div class="field"><label for="name">이름</label><input id="name" required placeholder="관리자 이름" /></div>
+            <div class="field"><label for="email">이메일</label><input id="email" type="email" required placeholder="admin@example.com" /></div>
+            <div class="field"><label for="password">비밀번호</label><input id="password" type="password" placeholder="수정하지 않으면 비워두세요" /></div>
+            <button class="btn primary" id="submitButton" type="submit">관리자 등록</button>
+            <button class="btn" id="cancelButton" type="button" style="display:none;">수정 취소</button>
+            <div class="status" id="status" aria-live="polite"></div>
+          </form>
+        </section>
+        <section class="panel">
+          <h2>등록된 관리자</h2>
+          <table><thead><tr><th>이름</th><th>이메일</th><th>등록일</th><th>관리</th></tr></thead><tbody id="adminBody"></tbody></table>
+        </section>
+      </div>
+    </main>
+    <script>
+      const API_BASE_URL = window.location.origin;
+      const USER_KEY = 'demo-login-user';
+      const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+      if (!user) window.location.href = 'index.html';
+      if (user && user.email !== 'ainsonicav@gmail.com' && user.role !== 'admin') { alert('관리자만 접근할 수 있습니다.'); window.location.href = 'index.html'; }
+      const adminBody = document.getElementById('adminBody');
+      const adminLimit = document.getElementById('adminLimit');
+      const status = document.getElementById('status');
+      const form = document.getElementById('adminForm');
+      const formTitle = document.getElementById('formTitle');
+      const submitButton = document.getElementById('submitButton');
+      const cancelButton = document.getElementById('cancelButton');
+      let editingAdminId = null;
+      let admins = [];
+      async function loadAdmins() {
+        const response = await fetch(`${API_BASE_URL}/api/admins`);
+        const data = await response.json();
+        admins = data.admins || [];
+        adminLimit.textContent = `관리자 ${admins.length}/5명`;
+        adminBody.innerHTML = admins.map((admin) => `<tr><td>${admin.name}</td><td>${admin.email}</td><td>${new Date(admin.created_at).toLocaleDateString('ko-KR')}</td><td><button class="btn edit-button" type="button" data-id="${admin.id}">수정</button></td></tr>`).join('') || '<tr><td class="empty" colspan="4">등록된 관리자가 없습니다.</td></tr>';
+        document.querySelectorAll('.edit-button').forEach((button) => button.addEventListener('click', () => startEdit(Number(button.dataset.id))));
+      }
+      function startEdit(adminId) {
+        const admin = admins.find((item) => item.id === adminId);
+        if (!admin) return;
+        editingAdminId = adminId;
+        formTitle.textContent = '관리자 정보 수정';
+        submitButton.textContent = '수정 저장';
+        cancelButton.style.display = 'inline-block';
+        document.getElementById('name').value = admin.name;
+        document.getElementById('email').value = admin.email;
+        document.getElementById('password').value = '';
+        document.getElementById('name').focus();
+      }
+      function resetForm() {
+        editingAdminId = null;
+        form.reset();
+        formTitle.textContent = '관리자 추가';
+        submitButton.textContent = '관리자 등록';
+        cancelButton.style.display = 'none';
+      }
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+          const payload = { name:document.getElementById('name').value.trim(), email:document.getElementById('email').value.trim(), password:document.getElementById('password').value };
+          const url = editingAdminId ? `${API_BASE_URL}/api/admins/${editingAdminId}` : `${API_BASE_URL}/api/admins`;
+          const response = await fetch(url, { method:editingAdminId ? 'PUT' : 'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || '관리자 정보 저장에 실패했습니다.');
+          status.textContent = data.message;
+          resetForm();
+          await loadAdmins();
+        } catch (error) { status.textContent = error.message; }
+      });
+      cancelButton.addEventListener('click', resetForm);
+      document.getElementById('backBtn').addEventListener('click', () => { window.location.href = 'admin.html'; });
+      document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.removeItem(USER_KEY); window.location.href = 'index.html'; });
+      loadAdmins().catch(() => { adminBody.innerHTML = '<tr><td class="empty" colspan="4">서버에 연결할 수 없습니다.</td></tr>'; });
+    </script>
+  </body>
+</html>

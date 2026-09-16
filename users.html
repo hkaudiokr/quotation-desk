@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>고객사 관리</title>
+    <style>
+      :root {
+        --bg: #f4f1eb;
+        --panel: #fffdf9;
+        --card: #fffdf9;
+        --text: #1f2933;
+        --muted: #69727d;
+        --primary: #d45b35;
+        --success: #26735b;
+        --danger: #b94a3a;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f4f1eb, #e9eee9);
+        color: var(--text);
+        font-family: 'Segoe UI', 'Noto Sans KR', sans-serif;
+        padding: 32px;
+      }
+
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 28px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 2.8rem);
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .btn {
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: transparent;
+        color: var(--text);
+        padding: 10px 16px;
+        border-radius: 12px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.84rem;
+        font-weight: 600;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .panel {
+        background: var(--card);
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 22px;
+        padding: 24px;
+        box-shadow: 0 28px 50px rgba(15, 23, 42, 0.35);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th, td {
+        text-align: left;
+        padding: 14px 10px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+
+      .role {
+        display: inline-flex;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+      }
+
+      .admin {
+        background: #f7dfd5;
+        color: #8f3522;
+      }
+
+      .user {
+        background: #edf8f2;
+        color: #1d6248;
+      }
+
+      .empty {
+        color: var(--muted);
+        padding: 24px 0 8px;
+      }
+
+      @media (max-width: 700px) {
+        body {
+          padding: 20px;
+        }
+
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        table {
+          display: block;
+          overflow-x: auto;
+        }
+      }
+    </style>
+    <link rel="stylesheet" href="theme.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <h1>고객사 관리</h1>
+        <div class="header-actions">
+          <button class="btn" id="downloadCustomersBtn">Google Sheets 다운로드</button>
+          <button class="btn" id="uploadCustomersBtn">Google Sheets 업로드</button>
+          <input id="customersFile" type="file" accept=".csv,text/csv" hidden />
+          <button class="btn" id="adminBtn">관리자 홈</button>
+          <button class="btn" id="logoutBtn">로그아웃</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <table>
+          <thead>
+            <tr>
+              <th>회사명</th>
+              <th>담당자</th>
+              <th>이메일</th>
+              <th>연락처</th>
+              <th>등록일</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody"></tbody>
+        </table>
+        <div id="emptyState" class="empty" style="display:none;">등록된 고객사가 없습니다.</div>
+      </div>
+    </div>
+
+    <script>
+      const USER_KEY = 'demo-login-user';
+      const API_BASE_URL = window.location.origin;
+
+      const user = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+      const userTableBody = document.getElementById('userTableBody');
+      const emptyState = document.getElementById('emptyState');
+      const adminBtn = document.getElementById('adminBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const downloadCustomersBtn = document.getElementById('downloadCustomersBtn');
+      const uploadCustomersBtn = document.getElementById('uploadCustomersBtn');
+      const customersFile = document.getElementById('customersFile');
+
+      if (!user) {
+        window.location.href = 'index.html';
+      }
+
+      if (user && user.email !== 'ainsonicav@gmail.com' && user.role !== 'admin') {
+        alert('관리자만 접근할 수 있습니다.');
+        window.location.href = 'index.html';
+      }
+
+      adminBtn.addEventListener('click', () => {
+        window.location.href = 'admin.html';
+      });
+
+      logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem(USER_KEY);
+        window.location.href = 'index.html';
+      });
+
+      async function loadUsers() {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/customers`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || '고객사 목록을 불러오지 못했습니다.');
+          }
+
+          const customers = data.customers || [];
+          window.customers = customers;
+          if (!customers.length) {
+            emptyState.style.display = 'block';
+            return;
+          }
+
+          emptyState.style.display = 'none';
+          userTableBody.innerHTML = customers.map((item) => `
+            <tr>
+              <td>${item.company_name || item.company || '-'}</td>
+              <td>${item.contact_name || item.name || '-'}</td>
+              <td>${item.contact_email || item.email || '-'}</td>
+              <td>${item.contact_phone || item.phone || '-'}</td>
+              <td>${new Date(item.created_at).toLocaleDateString('ko-KR')}</td>
+            </tr>
+          `).join('');
+        } catch (error) {
+          userTableBody.innerHTML = `
+            <tr>
+              <td colspan="5" style="color:#fca5a5; padding:20px;">${error.message}</td>
+            </tr>
+          `;
+        }
+      }
+
+      function csvCell(value) {
+        return `"${String(value ?? '').replace(/"/g, '""')}"`;
+      }
+
+      function downloadCsv(filename, headers, rows) {
+        const csv = [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+
+      function parseCsv(text) {
+        return text.trim().split(/\r?\n/).map((line) => {
+          const values = [];
+          line.replace(/("(?:[^"]|"")*"|[^,]*)(?:,|$)/g, (_, value) => {
+            values.push(value.startsWith('"') ? value.slice(1, -1).replace(/""/g, '"') : value);
+            return '';
+          });
+          return values;
+        });
+      }
+
+      downloadCustomersBtn.addEventListener('click', () => {
+        const rows = (window.customers || []).map((item) => [item.id, item.company_name || item.company, item.contact_name || item.name, item.contact_email || item.email, item.contact_phone || item.phone]);
+        downloadCsv('고객사_담당자_google_sheets.csv', ['id', '회사명', '담당자', '이메일', '연락처'], rows);
+      });
+      uploadCustomersBtn.addEventListener('click', () => customersFile.click());
+      customersFile.addEventListener('change', async () => {
+        const file = customersFile.files[0];
+        if (!file) return;
+        const rows = parseCsv(await file.text()).slice(1).filter((row) => row.length >= 5 && row[1]);
+        try {
+          for (const row of rows) {
+            const payload = { company_name: row[1], contact_name: row[2], contact_email: row[3], contact_phone: row[4] };
+            const id = Number(row[0]);
+            const response = await fetch(`${API_BASE_URL}/api/customers${id ? `/${id}` : ''}`, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error('고객사 데이터 반영 실패');
+          }
+          await loadUsers();
+          alert('고객사 파일을 반영했습니다.');
+        } catch (error) { alert('고객사 파일 반영에 실패했습니다.'); }
+        customersFile.value = '';
+      });
+
+      loadUsers();
+    </script>
+  </body>
+</html>
