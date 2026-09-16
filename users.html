@@ -113,6 +113,24 @@
         padding: 24px 0 8px;
       }
 
+      .edit-panel {
+        display: none;
+        margin-bottom: 16px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--card);
+      }
+
+      .edit-panel.active { display: block; }
+      .edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .edit-field { display: grid; gap: 6px; }
+      .edit-field label { color: var(--muted); font-size: .82rem; }
+      .edit-field input { width: 100%; padding: 10px 12px; border: 1px solid #b9c4cd; border-radius: 7px; font: inherit; color: var(--text); }
+      .edit-actions { display: flex; gap: 8px; margin-top: 14px; }
+      .row-actions { display: flex; gap: 6px; }
+      .delete-btn { color: #8f2f25 !important; }
+
       @media (max-width: 700px) {
         body {
           padding: 20px;
@@ -145,6 +163,16 @@
       </div>
 
       <div class="panel">
+        <section class="edit-panel" id="editPanel">
+          <h2>고객사 정보 수정</h2>
+          <div class="edit-grid">
+            <div class="edit-field"><label for="editCompanyName">회사명</label><input id="editCompanyName" /></div>
+            <div class="edit-field"><label for="editContactName">담당자</label><input id="editContactName" /></div>
+            <div class="edit-field"><label for="editContactEmail">이메일</label><input id="editContactEmail" type="email" /></div>
+            <div class="edit-field"><label for="editContactPhone">연락처</label><input id="editContactPhone" /></div>
+          </div>
+          <div class="edit-actions"><button class="btn primary" id="saveCustomerBtn">저장</button><button class="btn" id="cancelEditBtn">취소</button></div>
+        </section>
         <table>
           <thead>
             <tr>
@@ -153,6 +181,7 @@
               <th>이메일</th>
               <th>연락처</th>
               <th>등록일</th>
+              <th>관리</th>
             </tr>
           </thead>
           <tbody id="userTableBody"></tbody>
@@ -173,6 +202,12 @@
       const downloadCustomersBtn = document.getElementById('downloadCustomersBtn');
       const uploadCustomersBtn = document.getElementById('uploadCustomersBtn');
       const customersFile = document.getElementById('customersFile');
+      const editPanel = document.getElementById('editPanel');
+      const editCompanyName = document.getElementById('editCompanyName');
+      const editContactName = document.getElementById('editContactName');
+      const editContactEmail = document.getElementById('editContactEmail');
+      const editContactPhone = document.getElementById('editContactPhone');
+      let editingCustomerId = null;
 
       if (!user) {
         window.location.href = 'index.html';
@@ -220,15 +255,58 @@
               <td>${item.contact_email || item.email || '-'}</td>
               <td>${item.contact_phone || item.phone || '-'}</td>
               <td>${new Date(item.created_at).toLocaleDateString('ko-KR')}</td>
+              <td><div class="row-actions"><button class="btn edit-customer-btn" data-id="${item.id}" type="button">수정</button><button class="btn delete-btn delete-customer-btn" data-id="${item.id}" type="button">삭제</button></div></td>
             </tr>
           `).join('');
+          document.querySelectorAll('.edit-customer-btn').forEach((button) => button.addEventListener('click', () => startCustomerEdit(Number(button.dataset.id))));
+          document.querySelectorAll('.delete-customer-btn').forEach((button) => button.addEventListener('click', () => deleteCustomer(Number(button.dataset.id))));
         } catch (error) {
           userTableBody.innerHTML = `
             <tr>
-              <td colspan="5" style="color:#fca5a5; padding:20px;">${error.message}</td>
+              <td colspan="6" style="color:#8f2f25; padding:20px;">${error.message}</td>
             </tr>
           `;
         }
+      }
+
+      function startCustomerEdit(customerId) {
+        const customer = (window.customers || []).find((item) => item.id === customerId);
+        if (!customer) return;
+        editingCustomerId = customerId;
+        editCompanyName.value = customer.company_name || customer.company || '';
+        editContactName.value = customer.contact_name || customer.name || '';
+        editContactEmail.value = customer.contact_email || customer.email || '';
+        editContactPhone.value = customer.contact_phone || customer.phone || '';
+        editPanel.classList.add('active');
+        editCompanyName.focus();
+      }
+
+      function cancelCustomerEdit() {
+        editingCustomerId = null;
+        editPanel.classList.remove('active');
+      }
+
+      document.getElementById('saveCustomerBtn').addEventListener('click', async () => {
+        if (!editingCustomerId) return;
+        const response = await fetch(`${API_BASE_URL}/api/customers/${editingCustomerId}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ company_name: editCompanyName.value.trim(), contact_name: editContactName.value.trim(), contact_email: editContactEmail.value.trim(), contact_phone: editContactPhone.value.trim() })
+        });
+        const data = await response.json();
+        if (!response.ok) { alert(data.message || '고객사 수정에 실패했습니다.'); return; }
+        cancelCustomerEdit();
+        await loadUsers();
+      });
+
+      document.getElementById('cancelEditBtn').addEventListener('click', cancelCustomerEdit);
+
+      async function deleteCustomer(customerId) {
+        if (!confirm('이 고객사를 삭제하시겠습니까?')) return;
+        const response = await fetch(`${API_BASE_URL}/api/customers/${customerId}`, { method: 'DELETE' });
+        const data = await response.json();
+        if (!response.ok) { alert(data.message || '고객사 삭제에 실패했습니다.'); return; }
+        if (editingCustomerId === customerId) cancelCustomerEdit();
+        await loadUsers();
       }
 
       function csvCell(value) {

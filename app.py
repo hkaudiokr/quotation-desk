@@ -310,6 +310,17 @@ def update_customer(customer_id):
     return jsonify({"success": True, "message": "고객사가 수정되었습니다."})
 
 
+@app.route('/api/customers/<int:customer_id>', methods=['DELETE'])
+def delete_customer(customer_id):
+    conn = get_db_connection()
+    cursor = conn.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+    conn.commit()
+    conn.close()
+    if cursor.rowcount == 0:
+        return jsonify({"success": False, "message": "고객사를 찾을 수 없습니다."}), 404
+    return jsonify({"success": True, "message": "고객사가 삭제되었습니다."})
+
+
 @app.route('/api/products', methods=['GET', 'POST'])
 def products():
     if request.method == 'GET':
