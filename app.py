@@ -374,6 +374,17 @@ def update_product(product_id):
     return jsonify({"success": True, "message": "제품이 수정되었습니다."})
 
 
+@app.route('/api/products/<int:product_id>', methods=['DELETE'])
+def delete_product(product_id):
+    conn = get_db_connection()
+    cursor = conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
+    conn.commit()
+    conn.close()
+    if cursor.rowcount == 0:
+        return jsonify({"success": False, "message": "제품을 찾을 수 없습니다."}), 404
+    return jsonify({"success": True, "message": "제품이 삭제되었습니다."})
+
+
 @app.route('/api/quotations', methods=['GET', 'POST'])
 def quotations():
     if request.method == 'GET':

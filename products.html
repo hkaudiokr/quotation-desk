@@ -23,6 +23,8 @@
       input, textarea { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--ink); font:inherit; }
       textarea { min-height:86px; resize:vertical; }
       .status { min-height:20px; margin-top:12px; color:var(--accent); font-size:.84rem; }
+      .row-actions { display:flex; gap:8px; }
+      .delete-btn { color:#8f2f25 !important; }
       table { width:100%; border-collapse:collapse; }
       th, td { padding:13px 10px; text-align:left; border-bottom:1px solid var(--line); }
       th { color:var(--muted); font-size:.78rem; font-weight:600; }
@@ -40,19 +42,19 @@
       </header>
       <div class="layout">
         <section class="panel">
-          <h2>제품 등록</h2>
+          <h2>제품 등록 및 수정</h2>
           <form id="productForm">
             <div class="field"><label for="category">품목</label><input id="category" required placeholder="예: 오디오 믹서, 카메라" /></div>
             <div class="field"><label for="name">사양</label><input id="name" required placeholder="예: 16채널 디지털 믹서" /></div>
-            <div class="field"><label for="unitPrice">판매 단가</label><input id="unitPrice" type="number" min="0" required placeholder="0" /></div>
+            <div class="field"><label for="unitPrice">판매 단가</label><input id="unitPrice" type="text" inputmode="numeric" required placeholder="0" /></div>
             <div class="field"><label for="description">제품 메모</label><textarea id="description" placeholder="추가 설명이나 설치 조건을 입력하세요."></textarea></div>
-            <button class="btn primary" type="submit">제품 등록</button>
+            <div class="row-actions"><button class="btn primary" type="submit">제품 등록</button><button class="btn" id="saveProductBtn" type="button">수정</button></div>
             <div class="status" id="status" aria-live="polite"></div>
           </form>
         </section>
         <section class="panel">
           <h2>등록된 제품 <span id="count" style="color:var(--muted);font-size:.85rem;"></span></h2>
-          <table><thead><tr><th>품목</th><th>사양</th><th>판매 단가</th></tr></thead><tbody id="productBody"></tbody></table>
+          <table><thead><tr><th>품목</th><th>사양</th><th>판매 단가</th><th>관리</th></tr></thead><tbody id="productBody"></tbody></table>
         </section>
       </div>
     </main>
@@ -67,14 +69,58 @@
       const downloadProductsBtn = document.getElementById('downloadProductsBtn');
       const uploadProductsBtn = document.getElementById('uploadProductsBtn');
       const productsFile = document.getElementById('productsFile');
+      let editingProductId = null;
       const formatPrice = (value) => `${Number(value || 0).toLocaleString('ko-KR')}원`;
+      const formatPriceInput = (value) => String(value || '').replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      const numericPrice = () => Number(document.getElementById('unitPrice').value.replace(/,/g, '') || 0);
+      document.getElementById('unitPrice').addEventListener('input', (event) => {
+        event.target.value = formatPriceInput(event.target.value);
+      });
       async function loadProducts() {
         const response = await fetch(`${API_BASE_URL}/api/products`);
         const data = await response.json();
         const products = data.products || [];
         window.products = products;
         document.getElementById('count').textContent = `${products.length}개`;
-        productBody.innerHTML = products.map((product) => `<tr><td><span class="category">${product.category || '-'}</span></td><td><strong>${product.name}</strong><br><small style="color:var(--muted)">${product.description || ''}</small></td><td>${formatPrice(product.unit_price)}</td></tr>`).join('') || '<tr><td class="empty" colspan="3">등록된 제품이 없습니다.</td></tr>';
+        productBody.innerHTML = products.map((product) => `<tr><td><span class="category">${product.category || '-'}</span></td><td><strong>${product.name}</strong><br><small style="color:var(--muted)">${product.description || ''}</small></td><td>${formatPrice(product.unit_price)}</td><td><div class="row-actions"><button class="btn edit-product-btn" data-id="${product.id}" type="button">수정</button><button class="btn delete-btn delete-product-btn" data-id="${product.id}" type="button">삭제</button></div></td></tr>`).join('') || '<tr><td class="empty" colspan="4">등록된 제품이 없습니다.</td></tr>';
+        document.querySelectorAll('.edit-product-btn').forEach((button) => button.addEventListener('click', () => startProductEdit(Number(button.dataset.id))));
+        document.querySelectorAll('.delete-product-btn').forEach((button) => button.addEventListener('click', () => deleteProduct(Number(button.dataset.id))));
+      }
+
+      function startProductEdit(productId) {
+        const product = (window.products || []).find((item) => item.id === productId);
+        if (!product) return;
+        editingProductId = productId;
+        document.getElementById('category').value = product.category || '';
+        document.getElementById('name').value = product.name || '';
+        document.getElementById('unitPrice').value = formatPriceInput(product.unit_price || 0);
+        document.getElementById('description').value = product.description || '';
+        document.getElementById('category').focus();
+      }
+
+      function cancelProductEdit() {
+        editingProductId = null;
+        document.getElementById('productForm').reset();
+      }
+
+      document.getElementById('saveProductBtn').addEventListener('click', async () => {
+        if (!editingProductId) return;
+        const response = await fetch(`${API_BASE_URL}/api/products/${editingProductId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ category:document.getElementById('category').value.trim(), name:document.getElementById('name').value.trim(), unit_price:numericPrice(), description:document.getElementById('description').value.trim() }) });
+        const data = await response.json();
+        if (!response.ok) { status.textContent = data.message || '제품 수정에 실패했습니다.'; return; }
+        cancelProductEdit();
+        status.textContent = data.message;
+        await loadProducts();
+      });
+
+      async function deleteProduct(productId) {
+        if (!confirm('이 제품을 삭제하시겠습니까?')) return;
+        const response = await fetch(`${API_BASE_URL}/api/products/${productId}`, { method:'DELETE' });
+        const data = await response.json();
+        if (!response.ok) { status.textContent = data.message || '제품 삭제에 실패했습니다.'; return; }
+        if (editingProductId === productId) cancelProductEdit();
+        status.textContent = data.message;
+        await loadProducts();
       }
 
       function csvCell(value) {
@@ -124,7 +170,7 @@
       });
       document.getElementById('productForm').addEventListener('submit', async (event) => {
         event.preventDefault();
-        const payload = { name: document.getElementById('name').value.trim(), category: document.getElementById('category').value.trim(), unit_price: Number(document.getElementById('unitPrice').value), description: document.getElementById('description').value.trim() };
+        const payload = { name: document.getElementById('name').value.trim(), category: document.getElementById('category').value.trim(), unit_price: numericPrice(), description: document.getElementById('description').value.trim() };
         try {
           const response = await fetch(`${API_BASE_URL}/api/products`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
           const data = await response.json();
